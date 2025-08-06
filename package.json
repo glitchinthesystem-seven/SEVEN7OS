@@ -2,14 +2,15 @@
   "name": "seven7os",
   "version": "1.0.0",
   "description": "High-speed real estate CRM with slash-commands and AI",
+  "author": "seven7os",
+  "license": "Apache-2.0",
+  "type": "commonjs",
   "scripts": {
     "start": "concurrently \"cd backend && npm start\" \"cd frontend && npm start\"",
-    "test": "echo 'Tests TBD' && exit 0"
+    "test": "echo \"No tests specified\" && exit 0"
   },
   "dependencies": {
     "concurrently": "^8.2.0"
   },
-  "devDependencies": {},
-  "author": "glitchinthesystem-seven",
-  "license": "Apache-2.0"
+  "devDependencies": {}
 }

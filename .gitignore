@@ -1,4 +1,8 @@
+# Node modules
 node_modules/
+
+# Environment files
+.env
 
 # Logs
 npm-debug.log*
@@ -6,7 +10,7 @@ yarn-debug.log*
 yarn-error.log*
 
 # Runtime data
-pids
+pids/
 *.pid
 *.seed
 *.pid.lock
@@ -15,6 +19,6 @@ pids
 .idea/
 .vscode/
 
-# Misc
+# macOS
 .DS_Store
 

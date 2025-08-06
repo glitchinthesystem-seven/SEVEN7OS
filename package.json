@@ -1,17 +1,16 @@
 {
   "name": "seven7os",
   "version": "1.0.0",
-  "description": "Real estate CRM built for a high-speed deal markers react Frontera plus nODE BACKEND",
-  "main": "server.js",
-  "scripts": {
-    "test": "echo \"No tests specified\"",
-    "start": "node server.js"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "description": "High-speed real estate CRM with slash-commands and AI",
+  "author": "seven7os",
+  "license": "Apache-2.0",
   "type": "commonjs",
+  "scripts": {
+    "start": "concurrently \"cd backend && npm start\" \"cd frontend && npm start\"",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
   "dependencies": {
-    "express": "^5.1.0"
-  }
+    "concurrently": "^8.2.0"
+  },
+  "devDependencies": {}
 }

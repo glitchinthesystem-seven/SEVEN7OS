@@ -1,17 +1,149 @@
-name: Project Status Sync
+name: PR → Project status sync (SEVEN7OS)
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize]
+    types: [opened, reopened, synchronize, closed]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+  projects: write
+
+env:
+  ORG: glitchinthesystem-seven
+  PROJECT_NUMBER: 1
+  STATUS_INPROGRESS: In Progress
+  STATUS_DONE: Done
 
 jobs:
-  sync-status:
+  sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Update linked Issues' Status from PR activity
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PROJECT_TOKEN }}  # PAT with Projects+Issues write
+          script: |
+            const org = process.env.ORG;
+            const projectNumber = parseInt(process.env.PROJECT_NUMBER, 10);
+            const statusInProgress = process.env.STATUS_INPROGRESS;
+            const statusDone = process.env.STATUS_DONE;
 
-      - name: Sync Project Status
-        run: |
-          echo "Syncing project status..."
-          # Add your project status sync logic here
+            const pr = context.payload.pull_request;
+            const isMerged = pr.merged || false;
+            const action = context.payload.action;
+
+            const uniq = (arr) => [...new Set(arr)];
+
+            // Gather referenced issues (closing keywords + plain #123)
+            const { repository } = await github.graphql(`
+              query($owner:String!, $repo:String!, $number:Int!) {
+                repository(owner:$owner, name:$repo) {
+                  pullRequest(number:$number) {
+                    closingIssuesReferences(first: 50) { nodes { number id } }
+                  }
+                }
+              }
+            `, { owner: context.repo.owner, repo: context.repo.repo, number: pr.number });
+
+            const closingIssues = repository.pullRequest.closingIssuesReferences.nodes || [];
+            const closingIssueNumbers = closingIssues.map(i => i.number);
+
+            const text = `${pr.title || ""}\n${pr.body || ""}`;
+            const bodyRefs = Array.from(text.matchAll(/#(\d+)/g)).map(m => parseInt(m[1], 10));
+
+            const issueNumbers = uniq([...closingIssueNumbers, ...bodyRefs]).filter(Number.isInteger);
+            if (issueNumbers.length === 0) {
+              core.info("No referenced issues found for this PR.");
+              return;
+            }
+
+            // Load Project + Status options
+            const projData = await github.graphql(`
+              query($org:String!, $number:Int!) {
+                organization(login:$org) {
+                  projectV2(number:$number) {
+                    id
+                    fields(first: 50) {
+                      nodes {
+                        ... on ProjectV2FieldCommon { id name }
+                        ... on ProjectV2SingleSelectField { id name options { id name } }
+                      }
+                    }
+                  }
+                }
+              }
+            `, { org, number: projectNumber });
+
+            const project = projData.organization?.projectV2;
+            if (!project) throw new Error(`Project not found ${org} #${projectNumber}`);
+
+            const statusField = project.fields.nodes.find(f => f.name === "Status" && f.options);
+            const optInProgress = statusField?.options.find(o => o.name === statusInProgress);
+            const optDone = statusField?.options.find(o => o.name === statusDone);
+            if (!statusField || !optInProgress || !optDone) {
+              throw new Error(`Missing Status field or options ("${statusInProgress}", "${statusDone}")`);
+            }
+
+            // Ensure each issue is in the project and set status per PR action
+            for (const number of issueNumbers) {
+              const issueRes = await github.graphql(`
+                query($owner:String!, $repo:String!, $number:Int!) {
+                  repository(owner:$owner, name:$repo) {
+                    issue(number:$number) { id number }
+                  }
+                }
+              `, { owner: context.repo.owner, repo: context.repo.repo, number });
+
+              const issue = issueRes.repository.issue;
+              if (!issue) { core.warning(`Issue #${number} not found`); continue; }
+
+              const itemsData = await github.graphql(`
+                query($org:String!, $number:Int!) {
+                  organization(login:$org) {
+                    projectV2(number:$number) {
+                      id
+                      items(first: 200) {
+                        nodes { id content { __typename ... on Issue { id } } }
+                      }
+                    }
+                  }
+                }
+              `, { org, number: projectNumber });
+
+              const nodes = itemsData.organization.projectV2.items.nodes;
+              let item = nodes.find(n => n.content?.__typename === "Issue" && n.content.id === issue.id);
+
+              if (!item) {
+                const addRes = await github.graphql(`
+                  mutation($projectId:ID!, $contentId:ID!) {
+                    addProjectV2ItemById(input:{ projectId:$projectId, contentId:$contentId }) {
+                      item { id }
+                    }
+                  }
+                `, { projectId: project.id, contentId: issue.id });
+                item = addRes.addProjectV2ItemById.item;
+                core.info(`Added issue #${number} to project as item ${item.id}`);
+              }
+
+              const optionId = (action === "closed" && isMerged) ? optDone.id : optInProgress.id;
+
+              await github.graphql(`
+                mutation($projectId:ID!, $itemId:ID!, $fieldId:ID!, $optionId:String!) {
+                  updateProjectV2ItemFieldValue(input:{
+                    projectId:$projectId,
+                    itemId:$itemId,
+                    fieldId:$fieldId,
+                    value:{ singleSelectOptionId:$optionId }
+                  }) { projectV2Item { id } }
+                }
+              `, {
+                projectId: project.id,
+                itemId: item.id,
+                fieldId: statusField.id,
+                optionId
+              });
+
+              core.notice(`Issue #${number}: Status set to ${optionId === optDone.id ? statusDone : statusInProgress}`);
+            }

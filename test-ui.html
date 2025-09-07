@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEVEN7OS x.ai API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .response {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .error {
+            border-left-color: #dc3545;
+            background-color: #f8d7da;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SEVEN7OS x.ai API Integration Test</h1>
+        
+        <div class="test-section">
+            <h3>Test 1: Basic Server Health Check</h3>
+            <button onclick="testBasicEndpoint()">Test Basic Endpoint</button>
+            <div id="basic-response" class="response" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test 2: Original Curl Command Equivalent</h3>
+            <p>This replicates the exact curl command from the problem statement.</p>
+            <button onclick="testChatTest()">Test /api/chat/test</button>
+            <div id="test-response" class="response" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test 3: Custom Chat Completion</h3>
+            <p>Test the general chat endpoint with custom messages:</p>
+            <textarea id="custom-messages" placeholder='[{"role":"system","content":"You are a helpful assistant."},{"role":"user","content":"Say hello!"}]'>[{"role":"system","content":"You are a helpful assistant."},{"role":"user","content":"Say hello!"}]</textarea>
+            <button onclick="testCustomChat()">Send Custom Messages</button>
+            <div id="custom-response" class="response" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test 4: Validation Test</h3>
+            <p>Test validation by sending invalid data (should return 400 error):</p>
+            <button onclick="testValidation()">Test Validation</button>
+            <div id="validation-response" class="response" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Documentation</h3>
+            <p>For complete API documentation, see <a href="X_AI_INTEGRATION.md" target="_blank">X_AI_INTEGRATION.md</a></p>
+            <p>Backend server should be running on <a href="http://localhost:5000" target="_blank">http://localhost:5000</a></p>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://localhost:5000';
+
+        function showResponse(elementId, data, isError = false) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `response ${isError ? 'error' : ''}`;
+            element.textContent = JSON.stringify(data, null, 2);
+        }
+
+        async function testBasicEndpoint() {
+            try {
+                const response = await fetch(`${BASE_URL}/`);
+                const data = await response.json();
+                showResponse('basic-response', data);
+            } catch (error) {
+                showResponse('basic-response', { error: error.message }, true);
+            }
+        }
+
+        async function testChatTest() {
+            try {
+                const response = await fetch(`${BASE_URL}/api/chat/test`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                showResponse('test-response', data, !response.ok);
+            } catch (error) {
+                showResponse('test-response', { error: error.message }, true);
+            }
+        }
+
+        async function testCustomChat() {
+            try {
+                const messagesText = document.getElementById('custom-messages').value;
+                const messages = JSON.parse(messagesText);
+                
+                const response = await fetch(`${BASE_URL}/api/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        messages: messages,
+                        model: 'grok-4-latest',
+                        stream: false,
+                        temperature: 0
+                    })
+                });
+                
+                const data = await response.json();
+                showResponse('custom-response', data, !response.ok);
+            } catch (error) {
+                showResponse('custom-response', { error: error.message }, true);
+            }
+        }
+
+        async function testValidation() {
+            try {
+                const response = await fetch(`${BASE_URL}/api/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        invalid: 'data'
+                    })
+                });
+                
+                const data = await response.json();
+                showResponse('validation-response', data, !response.ok);
+            } catch (error) {
+                showResponse('validation-response', { error: error.message }, true);
+            }
+        }
+    </script>
+</body>
+</html>

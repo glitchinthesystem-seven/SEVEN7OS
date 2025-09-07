@@ -2,11 +2,15 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const axios = require('axios');
+const path = require('path');
 
 dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from the parent directory
+app.use(express.static(path.join(__dirname, '..')));
 
 app.get('/', (req, res) => res.json({ message: 'SEVEN7OS Backend Orbiting' }));
 

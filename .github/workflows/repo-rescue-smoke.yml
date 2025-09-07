@@ -1,0 +1,55 @@
+name: Repo Rescue Smoke Tests
+
+on:
+  push:
+    branches: [ main, feat/repo-rescue ]
+    paths:
+      - 'app/repo-rescue/**'
+      - 'e2e/repo-rescue.spec.ts'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'app/repo-rescue/**'
+      - 'e2e/repo-rescue.spec.ts'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+
+jobs:
+  test:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install pnpm
+      run: npm install -g pnpm
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Build Next.js app
+      run: pnpm build
+
+    - name: Install Playwright Browsers
+      run: pnpm dlx playwright install --with-deps
+
+    - name: Run Playwright tests
+      run: pnpm exec playwright test e2e/repo-rescue.spec.ts
+
+    - name: Upload Playwright Report
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: playwright-report
+        path: playwright-report/
+        retention-days: 30

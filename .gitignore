@@ -22,3 +22,9 @@ pids/
 # macOS
 .DS_Store
 
+# Build directories
+/build/
+/dist/
+frontend/build/
+backend/build/
+

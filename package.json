@@ -1,21 +1,17 @@
-node_modules/
-.env
-
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# IDEs and editors
-.idea/
-.vscode/
-
-# Misc
-.DS_Store
+{
+  "name": "seven7os",
+  "version": "1.0.0",
+  "description": "Real estate CRM built for high-speed deal makers",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["crm", "real-estate"],
+  "author": "",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
 
